@@ -23,6 +23,7 @@ epsrel = pt_parameters['epsrel']
 # dt = 1./omega_cutoff/np.sqrt(3)
 dt=pt_parameters['dt']
 
+tf=30
 splitting=1.0
 rhoini=op.spin_dm('x-')
 system=oqupy.System(splitting*op.sigma('x')/2)
@@ -41,11 +42,12 @@ correlations = oqupy.PowerLawSD(alpha=alpha,
                                 temperature=temperature)
 bath = oqupy.Bath(op.sigma("z")/2.0, correlations)
 parameters=oqupy.TempoParameters(dt=dt,epsrel=epsrel)
+parameterstti=oqupy.TempoParameters(dt=dt,epsrel=epsrel,dkmax=int(tf/dt))
 
 # %%
 # smooth switching function
 lamconst=2
-tf=30
+
 numsteps=int(tf/dt)
 times=np.arange(numsteps)*dt
 def smswitch(t):
@@ -70,6 +72,11 @@ pttempostandard=oqupy.pt_tempo_compute(bath=bath,
                              end_time=tf,
                              parameters=parameters)
 
+pttempotti=oqupy.TTITempo(bath=bath,
+                          parameters=parameterstti,
+                          start_time=0)
+pttempotti.compute()
+
 # %%
 
 # dynamicspttestswitch=oqupy.compute_dynamics(
@@ -77,13 +84,21 @@ pttempostandard=oqupy.pt_tempo_compute(bath=bath,
 #     system=system,
 #     initial_state=rhoini,
 #     start_time=0)
-
+#%%
 dynamicsstandard=oqupy.compute_dynamics(
     process_tensor=pttempostandard,        
     system=system,
     initial_state=rhoini,
-    start_time=0)
-
+    start_time=0,
+    subdiv_limit=None)
+#%%
+dynamicstti=oqupy.compute_dynamics(
+    process_tensor=pttempotti.get_process_tensor(),
+    system=system,
+    initial_state=rhoini,
+    start_time=0,
+    num_steps=int(tf/dt),
+    subdiv_limit=None)
 
 # %%
 
@@ -96,7 +111,8 @@ dynamicsstandard=oqupy.compute_dynamics(
 t1,sx1=dynamicsstandard.expectations(op.sigma('x'),real=True)
 #t2,sx2=dynamicspttestswitch.expectations(op.sigma('x'),real=True)
 #t3,sx3=dynamicspttestswitch2.expectations(op.sigma('x'),real=True)
-
+#%%
+t2,sx2=dynamicstti.expectations(op.sigma('x'),real=True)
 # %%
 runtempo=True
 if runtempo:
@@ -111,10 +127,10 @@ if runtempo:
 #%%
 fig,ax=plt.subplots(1)
 #ax.plot(t,sx,'o')
-ax.plot(t1,sx1,label='PT-TEMPO (standard)')
-#ax.plot(t2,sx2,label='PT-TEMPO (smooth switch)')
+ax.plot(t1,sx1,label='PT-TEMPO')
+ax.plot(t2,sx2,label='TTI-TEMPO')
 if runtempo:
-    ax.plot(t3,sx3,label='TEMPO (smooth switch)')
+    ax.plot(t3,sx3,label='TEMPO')
 #ax2=ax.twinx()
 #ax2.plot(t,alpha_tramp)
 ax.set_ylim(-1,-0.9)
