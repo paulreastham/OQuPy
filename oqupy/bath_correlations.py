@@ -731,7 +731,7 @@ class CustomCountingSD(CustomSD):
         """Create a CustomFunctionSD (spectral density) object. """
         self._u=u
         super().__init__(j_function,cutoff,cutoff_type,temperature,name,description)
-        self.alpha = j_function(0.5)
+        # self.alpha = j_function(0.5) ##### TODO Doesn't break anything
 
     def correlationA1(
             self,
@@ -1180,7 +1180,8 @@ class CustomCountingSD(CustomSD):
         
 
 
-class CustomCountingSD_analytical(CustomSD):
+# Class which contains analytical results for an Ohmic spectral density with exponential cut-off
+class CustomCountingSD_analytical(CustomSD): 
     r"""
     Correlations corresponding to a custom spectral density, with the counting fields. The resulting
     spectral density is
@@ -1662,7 +1663,7 @@ class PowerLawSD(CustomSD):
         Auto-correlation function associated to the spectral density at the
         given temperature :math:`T`. Including analytical solution"""
             
-        if self.cutoff_type == 'exponential' and self.zeta == 1: 
+        if self.cutoff_type == 'exponential' and self.zeta == 1 and not matsubara: 
             if self.temperature == 0.0:
 
                 i1 = -2.0*self.alpha*np.log(1.0j*self.cutoff*tau+1.0)
