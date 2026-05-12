@@ -27,6 +27,7 @@ from oqupy.dynamics import Dynamics
 from oqupy.process_tensor import BaseProcessTensor
 from oqupy.system import ParameterizedSystem,ParameterizedSystem2ls
 from oqupy.util import get_progress, check_isinstance
+from functools import reduce
 
 
 
@@ -649,8 +650,7 @@ def compute_gradient_and_dynamics(
 
     target_ndarray = target_derivative
     target_ndarray = target_ndarray.reshape(hs_dim**2)
-    # target_ndarray.shape = tuple([1]*num_envs+[hs_dim**2])
-    target_ndarray = np.outer(caps,target_ndarray)
+    target_ndarray = reduce(lambda x,y: np.tensordot(x,y,axes=0),caps + [target_ndarray])
     current_node = tn.Node(target_ndarray)
     current_edges = current_node[:]
 
