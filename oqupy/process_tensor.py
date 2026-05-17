@@ -18,7 +18,7 @@ M. Paternostro, and K. Modi, *Non-Markovian quantumprocesses: Complete
 framework and efficient characterization*, Phys. Rev. A 97, 012127 (2018).
 """
 
-
+from functools import cache
 from abc import ABC, abstractmethod
 import os
 import tempfile
@@ -477,6 +477,15 @@ class SimpleProcessTensorInfinite(SimpleProcessTensor):
     def repeating_cell(self) -> tuple[int, int]:
         """Repeating unit cell of an infinite process tensor."""
         return (1, 1)
+    
+    @cache
+    def _cached_get_mpo_tensor(self, k: int, transformed: bool) -> ndarray:
+        """Caches the result of get_mpo_tensor"""
+        return super().get_mpo_tensor(k, transformed)
+
+    def get_mpo_tensor(self, step: int, transformed: Optional[bool] = True) -> ndarray:
+        return self._cached_get_mpo_tensor(self.effective_step(step), transformed)
+
 
 
 HDF5None = [np.nan]
