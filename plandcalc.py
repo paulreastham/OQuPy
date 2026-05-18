@@ -13,7 +13,7 @@ from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize,Bounds
 
-original_heatmarkers=True # set to True if running in PTTempoTimeDepCoupling
+original_heatmarkers=False # set to True if running in PTTempoTimeDepCoupling
 
 if original_heatmarkers:
     # from oqupy.iTEBD_TEMPO_useoqupybath import iTEBD_TEMPO_oqupy

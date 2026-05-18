@@ -37,7 +37,8 @@ from oqupy.base_api import BaseAPIClass
 from oqupy.config import MAX_DKMAX, DEFAULT_TOLERANCE, MAX_SYS_SAMPLES
 from oqupy.config import INTEGRATE_EPSREL, SUBDIV_LIMIT
 from oqupy.config import TEMPO_BACKEND_CONFIG
-from oqupy.bath_correlations import BaseCorrelations, CustomSD, CustomCountingSD_analytical,CustomCountingSD, PowerLawSD
+from oqupy.bath_correlations import BaseCorrelations, CustomSD, \
+    CustomCountingSD_analytical,CustomCountingSD, PowerLawSD
 from oqupy.dynamics import Dynamics, MeanFieldDynamics
 from oqupy.system import BaseSystem, System, TimeDependentSystem,\
     TimeDependentSystemWithField, MeanFieldSystem
@@ -398,22 +399,14 @@ class Tempo(BaseAPIClass):
         else:
             tmp_deg_positions = None
 
-        if isinstance(self._correlations,(CustomCountingSD, CustomCountingSD_analytical)):
-            return influence_matrix_marked(
-                dk,
-                parameters=self._parameters,
-                correlations=self._correlations,
-                coupling_acomm=self._bath.coupling_acomm,
-                coupling_comm=self._bath.coupling_comm,
-                deg_positions=tmp_deg_positions)
-        else:
-            return influence_matrix(
-                dk,
-                parameters=self._parameters,
-                correlations=self._correlations,
-                coupling_acomm=self._bath.coupling_acomm,
-                coupling_comm=self._bath.coupling_comm,
-                deg_positions=tmp_deg_positions)
+
+        return influence_matrix(
+            dk,
+            parameters=self._parameters,
+            correlations=self._correlations,
+            coupling_acomm=self._bath.coupling_acomm,
+            coupling_comm=self._bath.coupling_comm,
+            deg_positions=tmp_deg_positions)
 
     def _time(self, step: int) -> float:
         """Return the time that corresponds to the time step `step`. """
@@ -1012,6 +1005,12 @@ def influence_matrix(
         coupling_comm: ndarray,
         deg_positions: Optional[List[ndarray]] = None):
     """Compute the influence functional matrix. """
+
+
+    if isinstance(correlations,(CustomCountingSD, CustomCountingSD_analytical)):
+        return influence_matrix_marked(dk,parameters,correlations,coupling_acomm,
+            coupling_comm,deg_positions)
+
     dt = parameters.dt
     dkmax = parameters.dkmax
 
