@@ -170,7 +170,7 @@ def smswitch(t):
     else:
         return 1.0
 smv=np.vectorize(smswitch)
-alpha_tramp=smv(dynamicspttest._times)
+alpha_tramp=smv(np.arange(num_steps)*dt)
 
 # %%
 pttempotest=oqupy.pt_tempo_compute(bath=bath,
@@ -206,15 +206,15 @@ ax.plot(t2,sx2)
 # %%
 # Let's look at the heats at the end of this process. 
 
-pttempotestheat=pt_tempo_counting_compute(bath=bathcf,
+pttempotestheat=oqupy.pt_tempo_compute(bath=bathcf,
                              start_time=0,
-                             end_time=20,
+                             end_time=tf,
                              parameters=parameters,
                              alpha_t=np.ones(num_steps))
 
-pttempotestheatswitch=pt_tempo_counting_compute(bath=bathcf,
+pttempotestheatswitch=oqupy.pt_tempo_compute(bath=bathcf,
                              start_time=0,
-                             end_time=20,
+                             end_time=tf,
                              parameters=parameters,
                              alpha_t=alpha_tramp)
 
@@ -236,7 +236,7 @@ print(finalheatnoswit,finalheatswit)
 
 # %%
 # Tempo version of the dynamics with the switch
-if False:
+if True:
     temporesnoramp=oqupy.tempo_compute(system=system,bath=bath,
                                 initial_state=rhoini,
                                 start_time=0,
@@ -277,7 +277,7 @@ if False:
 temporesheatnoramp=oqupy.tempo_compute(system=system,bath=bathcf,
                              initial_state=rhoini,
                              start_time=0,
-                             end_time=50,
+                             end_time=tf,
                              parameters=parameters,
                              alpha_t=np.ones(num_steps))
 
@@ -286,7 +286,7 @@ temporesheatnoramp=oqupy.tempo_compute(system=system,bath=bathcf,
 temporesheatramp=oqupy.tempo_compute(system=system,bath=bathcf,
                              initial_state=rhoini,
                              start_time=0,
-                             end_time=50,
+                             end_time=tf,
                              parameters=parameters,
                              alpha_t=alpha_tramp)
 
@@ -306,3 +306,5 @@ ax.legend()
 plt.show()
 
 
+
+# %%
