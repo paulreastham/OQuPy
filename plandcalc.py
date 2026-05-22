@@ -186,9 +186,14 @@ dynamicspttestswitch=oqupy.compute_dynamics(
 t,sx=dynamicspttest.expectations(op.sigma('x'),real=True)
 t2,sx2=dynamicspttestswitch.expectations(op.sigma('x'),real=True)
 
+poldp=spi.quad(lambda x: correlations.spectral_density(x)/(4.0*(x+inisplit)**2),0,30)[0]
+polpred=-np.exp(-2*poldp)
+
 fig,ax=plt.subplots(1)
-ax.plot(t,sx,'o')
-ax.plot(t2,sx2)
+ax.plot(t,sx,'o',label='Constant coupling')
+ax.plot(t2,sx2,label='Smooth switch')
+ax.axhline(polpred,label='Polaron result')
+ax.legend()
 plt.show()
 
 # %%
@@ -221,7 +226,11 @@ heatdynamicspttestswitch=oqupy.compute_dynamics(
 # %%
 finalheatnoswit=heatdynamicspttest._states[-1].trace().imag/u
 finalheatswit=heatdynamicspttestswitch._states[-1].trace().imag/u
+
+polht=spi.quad(lambda x: correlations.spectral_density(x)*x/(4.0*(x+1.0)**2),0,30)[0]
+
 print("Final heats: constant coupling = ", finalheatnoswit, " smooth switch = ", finalheatswit)
+print("Polaron = ",polht)
 
 # %%
 # Tempo version of the dynamics with the constant/smooth switch couplings
@@ -248,14 +257,11 @@ if runtempo:
     # %%
     t,sx=temporesnoramp.expectations(op.sigma('x'))
     t2,sx2=temporesramp.expectations(op.sigma('x'))
-    poldp=spi.quad(lambda x: correlations.spectral_density(x)/(4.0*(x**2+1.0)),0,30)[0] # heat transferred in polaron
-    polpred=-np.exp(-2*poldp)
-    
+
     fig,ax=plt.subplots(1)
     ax.plot(t,sx,'o',label='Constant coupling')
     ax.plot(t2,sx2,label='Ramp')
     ax.legend()
-    ax.axhline(polpred) 
     ax.set_ylim(-1,-0.9)
     ax2=ax.twinx()
     ax2.set_ylim(0,1)
@@ -292,7 +298,7 @@ if runtempoheats:
     heatsramp=temporesheatramp.states.trace(axis1=1,axis2=2).imag/u
 
     fig,ax=plt.subplots(1)
-    polht=spi.quad(lambda x: correlations.spectral_density(x)*x/(4.0*(x**2+1.0)),0,10)[0] # heat transferred in polaron
+    polht=spi.quad(lambda x: correlations.spectral_density(x)*x/(4.0*(x+1.0)**2),0,30)[0] # heat transferred in polaron
     ax.plot(temporesheatnoramp._times,heats,label='Instant switch')
     ax.plot(temporesheatramp._times,heatsramp,label='Smooth switch')
     ax.axhline(polht)

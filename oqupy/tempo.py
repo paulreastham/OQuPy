@@ -1004,8 +1004,7 @@ def influence_matrix(
         coupling_acomm: ndarray,
         coupling_comm: ndarray,
         deg_positions: Optional[List[ndarray]] = None):
-    """Compute the influence functional matrix. """
-
+    """Return the influence functional matrix. """
 
     if isinstance(correlations,(CustomCountingSD, CustomCountingSD_analytical)):
         return influence_matrix_marked(dk,parameters,correlations,coupling_acomm,
@@ -1112,9 +1111,13 @@ def influence_matrix_marked(
     op_m = coupling_comm
 
     if dk == 0:
-            infl = np.diag(np.exp((op_m*((etaC_dk.real-1j*etaA1_dk.imag)*op_p+(1j*etaC_dk.imag-etaA1_dk.real)*op_m)-op_p*((etaC_dk.real+1j*etaA2_dk.imag)*op_m+(etaA2_dk.real+1j*etaC_dk.imag)*op_p))))
+            infl = np.diag(np.exp((op_m*((etaC_dk.real-1j*etaA1_dk.imag)*op_p+
+                (1j*etaC_dk.imag-etaA1_dk.real)*op_m)-op_p*((etaC_dk.real+1j*etaA2_dk.imag)*op_m+
+                    (etaA2_dk.real+1j*etaC_dk.imag)*op_p))))
     else:
-            infl = np.exp(np.outer(etaC_dk.real*op_p-1j*etaA1_dk.imag*op_p+1j*etaC_dk.imag*op_m-etaA1_dk.real*op_m,op_m)-np.outer(etaA2_dk.real*op_p+1j*etaC_dk.imag*op_p+etaC_dk.real*op_m+1j*etaA2_dk.imag*op_m,op_p))
+            infl = np.exp(np.outer(etaC_dk.real*op_p-1j*etaA1_dk.imag*op_p+
+                1j*etaC_dk.imag*op_m-etaA1_dk.real*op_m,op_m)-np.outer(etaA2_dk.real*op_p+
+                    1j*etaC_dk.imag*op_p+etaC_dk.real*op_m+1j*etaA2_dk.imag*op_m,op_p))
     return infl
 
 GUESS_WARNING_MSG = "Estimating TEMPO parameters. " \
