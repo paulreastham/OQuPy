@@ -4,22 +4,12 @@ import oqupy.operators as op
 import scipy.integrate as spi
 import numpy as np
 
-from oqupy.pt_tempo import PtTempoCounting
-from oqupy.pt_tempo import pt_tempo_counting_compute
 from oqupy.tti_tempo import TTITempo
 import matplotlib.pyplot as plt
 
 from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize,Bounds
-
-original_heatmarkers=False # set to True if running in PTTempoTimeDepCoupling
-
-if original_heatmarkers:
-    # from oqupy.iTEBD_TEMPO_useoqupybath import iTEBD_TEMPO_oqupy
-    # from oqupy.process_tensor import TTInvariantProcessTensor
-    from oqupy.tti_tempo import TTITempoCounting
-
 
 pt_parameters = {'epsrel':10**(-7),
                  'alpha':0.1,
@@ -31,17 +21,11 @@ omega_cutoff = pt_parameters['omega_cutoff']
 alpha = pt_parameters['alpha']
 temperature = pt_parameters['temp']
 epsrel = pt_parameters['epsrel']
-# dt = 1./omega_cutoff/np.sqrt(3)
 dt=pt_parameters['dt']
-
-tcut=27
-
-Rho_0=oqupy.operators.spin_dm('x+')
 
 # spectral density (without cutoff)
 def j(w):
     return 2*alpha*w
-
 
 # %%
 
@@ -55,22 +39,20 @@ parameters=oqupy.TempoParameters(dt=dt,epsrel=epsrel,dkmax=500)
 
 # %%
 u=0.01
-correlationscf=oqupy.bath_correlations.CustomCountingSD_analytical(j_function=j,cutoff=omega_cutoff,u=u,
+correlationscf=oqupy.counting_bath_correlations.CustomCountingSD_analytical(j_function=j,cutoff=omega_cutoff,u=u,
                                                  cutoff_type='exponential',temperature=temperature)
 
 bathcf = oqupy.Bath(op.sigma("z")/2.0, correlationscf)
 
 # %%
-# generate results for a linear ramp using Eoin's TTI-heat markers code
-# create TTI process tensors 
+# Demonstration of TTI-TEMPO with heat markerss
+# Calculates the heat absorption by a qubit, initially in equilibrium with the bath at splitting inisplit,
+# as that splitting is reduced to zero over a time t_prot
 
 pt_var=TTITempo(bath,start_time=0.0,parameters=parameters)
 process_tensor_var = pt_var.get_process_tensor()
 
-if original_heatmarkers:
-    pt_varcf=TTITempoCounting(bathcf,start_time=0.0,parameters=parameters)
-else: # new version never converges
-    pt_varcf=TTITempo(bathcf,start_time=0.0,parameters=parameters)
+pt_varcf=TTITempo(bathcf,start_time=0.0,parameters=parameters)
 
 process_tensor_varcf = pt_varcf.get_process_tensor()
 
@@ -157,6 +139,11 @@ else:
     pupx=0
     pdnx=1
 
+# time-dependent system-environment coupling
+# compute the dynamics of a qubit with constant splitting, 
+# for (i)time-independent system-environment coupling, and (ii)a smooth switch on
+# of the system-environment coupling
+
 rhoini=oqupy.operators.spin_dm('x+')*pupx+oqupy.operators.spin_dm('x-')*pdnx
 
 system=oqupy.System(inisplit*op.sigma('x')/2)
@@ -202,9 +189,11 @@ t2,sx2=dynamicspttestswitch.expectations(op.sigma('x'),real=True)
 fig,ax=plt.subplots(1)
 ax.plot(t,sx,'o')
 ax.plot(t2,sx2)
+plt.show()
 
 # %%
-# Let's look at the heats at the end of this process. 
+# Comparison of the heat transfers at the final time 
+# in the two cases above
 
 pttempotestheat=oqupy.pt_tempo_compute(bath=bathcf,
                              start_time=0,
@@ -232,11 +221,13 @@ heatdynamicspttestswitch=oqupy.compute_dynamics(
 # %%
 finalheatnoswit=heatdynamicspttest._states[-1].trace().imag/u
 finalheatswit=heatdynamicspttestswitch._states[-1].trace().imag/u
-print(finalheatnoswit,finalheatswit)
+print("Final heats: constant coupling = ", finalheatnoswit, " smooth switch = ", finalheatswit)
 
 # %%
-# Tempo version of the dynamics with the switch
-if True:
+# Tempo version of the dynamics with the constant/smooth switch couplings
+# Should produce the same results as above but much slower 
+runtempo=False
+if runtempo:
     temporesnoramp=oqupy.tempo_compute(system=system,bath=bath,
                                 initial_state=rhoini,
                                 start_time=0,
@@ -268,42 +259,47 @@ if True:
     ax.set_ylim(-1,-0.9)
     ax2=ax.twinx()
     ax2.set_ylim(0,1)
-    ax2.plot(t,alpha_tramp,label='Coupling function')
+    #ax2.plot(t,alpha_tramp,label='Coupling function')
     ax2.legend()
 
-# %%
-# tempo version of the heats with the switch (slow!)
-
-temporesheatnoramp=oqupy.tempo_compute(system=system,bath=bathcf,
-                             initial_state=rhoini,
-                             start_time=0,
-                             end_time=tf,
-                             parameters=parameters,
-                             alpha_t=np.ones(num_steps))
+    plt.show()
 
 # %%
+# tempo version of the heats with the constant/smooth switch
+# this allows the heat to be computed at any time, not just the final one
 
-temporesheatramp=oqupy.tempo_compute(system=system,bath=bathcf,
-                             initial_state=rhoini,
-                             start_time=0,
-                             end_time=tf,
-                             parameters=parameters,
-                             alpha_t=alpha_tramp)
+runtempoheats=False
+if runtempoheats:
+    temporesheatnoramp=oqupy.tempo_compute(system=system,bath=bathcf,
+                                initial_state=rhoini,
+                                start_time=0,
+                                end_time=tf,
+                                parameters=parameters,
+                                alpha_t=np.ones(num_steps))
 
-# %%
+    # %%
 
-heats=temporesheatnoramp.states.trace(axis1=1,axis2=2).imag/u
-heatsramp=temporesheatramp.states.trace(axis1=1,axis2=2).imag/u
+    temporesheatramp=oqupy.tempo_compute(system=system,bath=bathcf,
+                                initial_state=rhoini,
+                                start_time=0,
+                                end_time=tf,
+                                parameters=parameters,
+                                alpha_t=alpha_tramp)
 
-fig,ax=plt.subplots(1)
-polht=spi.quad(lambda x: correlations.spectral_density(x)*x/(4.0*(x**2+1.0)),0,10)[0] # heat transferred in polaron
-ax.plot(temporesheatnoramp._times,heats,label='Instant switch')
-ax.plot(temporesheatramp._times,heatsramp,label='Smooth switch')
-ax.axhline(polht)
-#ax.axhline(2*polht)
-ax.set_ylim(0,0.05)
-ax.legend()
-plt.show()
+    # %%
+
+    heats=temporesheatnoramp.states.trace(axis1=1,axis2=2).imag/u
+    heatsramp=temporesheatramp.states.trace(axis1=1,axis2=2).imag/u
+
+    fig,ax=plt.subplots(1)
+    polht=spi.quad(lambda x: correlations.spectral_density(x)*x/(4.0*(x**2+1.0)),0,10)[0] # heat transferred in polaron
+    ax.plot(temporesheatnoramp._times,heats,label='Instant switch')
+    ax.plot(temporesheatramp._times,heatsramp,label='Smooth switch')
+    ax.axhline(polht)
+    #ax.axhline(2*polht)
+    ax.set_ylim(0,0.05)
+    ax.legend()
+    plt.show()
 
 
 

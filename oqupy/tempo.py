@@ -37,8 +37,8 @@ from oqupy.base_api import BaseAPIClass
 from oqupy.config import MAX_DKMAX, DEFAULT_TOLERANCE, MAX_SYS_SAMPLES
 from oqupy.config import INTEGRATE_EPSREL, SUBDIV_LIMIT
 from oqupy.config import TEMPO_BACKEND_CONFIG
-from oqupy.bath_correlations import BaseCorrelations, CustomSD, \
-    CustomCountingSD_analytical,CustomCountingSD, PowerLawSD
+from oqupy.bath_correlations import BaseCorrelations, CustomSD, PowerLawSD
+from oqupy.counting_bath_correlations import CustomCountingSD_analytical, CustomCountingSD
 from oqupy.dynamics import Dynamics, MeanFieldDynamics
 from oqupy.system import BaseSystem, System, TimeDependentSystem,\
     TimeDependentSystemWithField, MeanFieldSystem
