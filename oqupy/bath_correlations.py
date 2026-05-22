@@ -550,10 +550,6 @@ class CustomSD(BaseCorrelations):
         correlation : ndarray
             The auto-correlation function :math:`C(\tau)` at time :math:`\tau`.
         """
-
-
-
-        
         # real and imaginary part of the integrand
         if matsubara:
             tau = -1j * tau
@@ -594,8 +590,6 @@ class CustomSD(BaseCorrelations):
         if matsubara:
             integral = integral.real
         return -integral
-
-
 
     def correlation_2d_integral(
             self,
