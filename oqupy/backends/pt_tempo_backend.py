@@ -109,10 +109,10 @@ class PtTempoBackend:
         # create mpo
         # create mpo last
         # copy and contract mpo to mps
-        scale = self._dimension
-
-        
-        #scale = 1
+        if False:
+            scale = np.sqrt(self._dimension**2+1)
+        else: 
+            scale = self._dimension
 
         self._sum_north_scaled = self._sum_north * scale
 

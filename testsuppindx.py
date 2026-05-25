@@ -61,7 +61,7 @@ ptt2=oqupy.PtTempo(bath=bath,
             extra_dim=True)
 ptt2.compute()
 pttempotest2=ptt2.get_process_tensor()
-
+#%%
 print('MPO dimensions ',pttempotest2.get_mpo_tensor(2).shape)
 
 for step in range(len(pttempotest2)):
@@ -100,8 +100,8 @@ dynamicspttest2=oqupy.compute_dynamics(
 
 t,sx=dynamicspttest.expectations(op.sigma('x'),real=True)
 # renormalize traces 
-tracefromtest=dynamicspttest2.states[10].trace()
-dynamicspttest2._states=dynamicspttest2._states/tracefromtest
+# tracefromtest=dynamicspttest2.states[10].trace()
+#dynamicspttest2._states=dynamicspttest2._states/tracefromtest
 
 t2,sx2=dynamicspttest2.expectations(op.sigma('x'),real=True)
 
