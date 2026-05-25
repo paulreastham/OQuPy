@@ -98,7 +98,8 @@ class PtTempo(BaseAPIClass):
             backend_config: Optional[Dict] = None,
             name: Optional[Text] = None,
             description: Optional[Text] = None,
-            alpha_t : Optional[ndarray] = None) -> None:
+            alpha_t : Optional[ndarray] = None,
+            extra_dim : Optional[bool] = False) -> None:
         """Create a PtTempo object. """
         assert isinstance(bath, Bath), \
             "Argument 'bath' must be an instance of Bath."
@@ -132,6 +133,13 @@ class PtTempo(BaseAPIClass):
 
         # modification for time-dependent coupling 
         self._alpha_t = alpha_t
+
+        # set to true to allow extraction of caps in general cases
+        # using Link's approach of adding an extra dimension to allow
+        # the TEMPO network to be cut after contraction
+
+        self._extra_dim=extra_dim
+
         if process_tensor_file or isinstance(process_tensor_file, Text):
             if isinstance(process_tensor_file, Text):
                 filename = process_tensor_file
@@ -140,6 +148,8 @@ class PtTempo(BaseAPIClass):
             self._init_file_process_tensor(filename, overwrite)
         else:
             self._init_simple_process_tensor()
+
+        self._process_tensor._extra_dim=self._extra_dim
 
         if backend_config is None:
             self._backend_config = PT_TEMPO_BACKEND_CONFIG
@@ -216,6 +226,12 @@ class PtTempo(BaseAPIClass):
             sum_north =  np.ones(self._dimension**2, dtype=float)
             sum_west = np.ones(self._dimension**2, dtype=float)
             degeneracy_maps = None
+
+        if self._extra_dim:
+            nsup=1
+            sum_north=np.pad(sum_north,(0,nsup),constant_values=1)
+            sum_west=np.pad(sum_north,(0,nsup),constant_values=1)
+        
         dkmax = self._parameters.dkmax
         if dkmax is None:
             dkmax = self._num_steps
@@ -253,7 +269,8 @@ class PtTempo(BaseAPIClass):
             correlations=self._correlations,
             coupling_acomm=self._bath.coupling_acomm,
             coupling_comm=self._bath.coupling_comm,
-            deg_positions=tmp_deg_positions)
+            deg_positions=tmp_deg_positions,
+            extra_dim=self._extra_dim)
 
     @property
     def dimension(self) -> np.ndarray:

@@ -442,8 +442,16 @@ class SimpleProcessTensorFinite(SimpleProcessTensor):
         caps = [np.array([1.0], dtype=NpDtype)]
         last_cap = tn.Node(caps[-1])
 
+        if self._extra_dim:
+            slicing_cap=np.concatenate([np.zeros(self.hilbert_space_dimension**2),[1]])
+        else:
+            slicing_cap=self._trace_square
+
         for step in reversed(range(length)):
-            trace_square = tn.Node(self._trace_square)
+
+            trace_square = tn.Node(slicing_cap)
+
+            # trace_square = tn.Node(self._trace_square)
             trace_in = tn.Node(self._trace_in)
             trace_out = tn.Node(self._trace_out)
             ten = tn.Node(self._mpo_tensors[step])
