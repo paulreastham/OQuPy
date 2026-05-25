@@ -230,7 +230,7 @@ class PtTempo(BaseAPIClass):
         if self._extra_dim:
             nsup=1
             sum_north=np.pad(sum_north,(0,nsup),constant_values=1)
-            sum_west=np.pad(sum_north,(0,nsup),constant_values=1)
+            sum_west=np.pad(sum_west,(0,nsup),constant_values=1)
         
         dkmax = self._parameters.dkmax
         if dkmax is None:
