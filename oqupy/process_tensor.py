@@ -50,7 +50,8 @@ class BaseProcessTensor(BaseAPIClass, ABC):
             transform_in: Optional[ndarray] = None,
             transform_out: Optional[ndarray] = None,
             name: Optional[Text] = None,
-            description: Optional[Text] = None) -> None:
+            description: Optional[Text] = None,
+            extra_dim: Optional[bool] = None) -> None:
         """Constructor of BaseProcessTensor. """
         self._hs_dim = hilbert_space_dimension
         self._dt = dt
@@ -260,7 +261,8 @@ class SimpleProcessTensor(BaseProcessTensor):
             transform_in: Optional[ndarray] = None,
             transform_out: Optional[ndarray] = None,
             name: Optional[Text] = None,
-            description: Optional[Text] = None) -> None:
+            description: Optional[Text] = None,
+            extra_dim: Optional[bool] = False) -> None:
         """Constructor of SimpleProcessTensor. """
         self._initial_tensor = None
         self._mpo_tensors = []
@@ -272,7 +274,8 @@ class SimpleProcessTensor(BaseProcessTensor):
             transform_in,
             transform_out,
             name,
-            description)
+            description,
+            extra_dim)
 
     def __len__(self) -> int:
         """Length of process tensor. """

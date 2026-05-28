@@ -107,10 +107,95 @@ t2,sx2=dynamicspttest2.expectations(op.sigma('x'),real=True)
 
 fig,ax=plt.subplots(1)
 ax.plot(t,sx,'o',label='Standard')
-ax.plot(t2,sx2,label='Fancy caps')
+#ax.plot(t2,sx2,label='Fancy caps')
 #ax.set_ylim(-1,1)
 ax.legend()
 plt.show()
+
+
+# %%
+# let's try the other way
+
+padcoupling=np.pad(op.sigma("z")/2.0,((0,1),(0,1)),constant_values=0.0)
+padbath=oqupy.Bath(padcoupling, correlations)
+
+# %%
+
+ptt3=oqupy.PtTempo(bath=padbath,
+            start_time=0,
+            end_time=tf,
+            parameters=parameters,
+            extra_dim=False)
+ptt3.compute()
+pttempotest3=ptt3.get_process_tensor()
+# %%
+hampad=np.pad(inisplit*op.sigma('x')/2,((0,1),(0,1)),constant_values=0.0)
+system3=oqupy.System(hampad)
+rhoinipad=np.pad(rhoini,((0,1),(0,1)),constant_values=0.0)
+
+
+dynamicspttest3=oqupy.compute_dynamics(
+    process_tensor=pttempotest3,        
+    system=system3,
+    initial_state=rhoinipad,
+    start_time=0)
+
+
+# %%
+padsigx=np.pad(op.sigma('x'),((0,1),(0,1)),constant_values=0.0)
+t3,sx3=dynamicspttest3.expectations(padsigx,real=True)
+
+plt.plot(t3,sx3)
+# %%
+
+# construct an expanded process tensor with an extra null state
+# as a way of making PTTEMPO trace caps work 
+
+def expand_op(op):
+    return np.pad(op,((0,1),(0,1)),constant_values=0.0))
+
+def compute_pt_extradim(coupling_operator,correlations,
+                        start_time,
+                        end_time,
+                        parameters):
+    coupling_pad=expand_op(coupling)
+    padbath=oqupy.bath(coupling_pad,correlations)
+    ptt=oqupy.PtTempo(bath=padbath,
+            start_time=start_time,
+            end_time=end_time,
+            parameters=parameters)
+    ptt.compute() 
+    return ptt
+
+# take the process tensor object for such an expanded Hilbert space and compute the caps
+def compute_caps_augdof(pt):
+    self=pt
+    length = len(self)
+    caps = [np.array([1.0], dtype=NpDtype)]
+    last_cap = tn.Node(caps[-1])
+    slicing_cap=np.zeros(self._hs_dim**2)
+    slicing_cap[-1]=1.0#/self._hs_dim
+
+    for step in reversed(range(length)):
+        trace_square = tn.Node(slicing_cap)
+        trace_in = tn.Node(self._trace_in)
+        trace_out = tn.Node(self._trace_out)
+        ten = tn.Node(self._mpo_tensors[step])
+
+        if len(ten.shape) == 3:
+            ten[1] ^ last_cap[0]
+            ten[2] ^ trace_square[0]
+            new_cap = ten @ last_cap @ trace_square
+        else:
+            ten[1] ^ last_cap[0]
+            ten[2] ^ trace_in[0]
+            ten[3] ^ trace_out[0]
+            new_cap = ten @ last_cap @ trace_in @ trace_out
+        caps.insert(0, new_cap.get_tensor())
+        last_cap = new_cap
+        
+    return caps
+
 
 
 # %%
