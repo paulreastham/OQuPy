@@ -433,17 +433,23 @@ class SimpleProcessTensorFinite(SimpleProcessTensor):
     def repeating_cell(self) -> NoneType:
         return None
 
-    def compute_caps(self) -> None:
+    def compute_caps(self,trace_square_override=None) -> None:
         """
         Compute and store all caps from the PT-MPO.
         """
+
+        if trace_square_override is not None:
+            trace_square_array=trace_square_override
+        else:
+            trace_square_array=self._trace_square
+
         length = len(self)
 
         caps = [np.array([1.0], dtype=NpDtype)]
         last_cap = tn.Node(caps[-1])
 
         for step in reversed(range(length)):
-            trace_square = tn.Node(self._trace_square)
+            trace_square = tn.Node(trace_square_array)
             trace_in = tn.Node(self._trace_in)
             trace_out = tn.Node(self._trace_out)
             ten = tn.Node(self._mpo_tensors[step])
