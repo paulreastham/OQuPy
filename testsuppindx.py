@@ -8,6 +8,8 @@ import sys
 from oqupy.tti_tempo import TTITempo
 import matplotlib.pyplot as plt
 
+import tensornetwork as tn
+
 from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize,Bounds
