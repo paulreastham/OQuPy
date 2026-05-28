@@ -1003,8 +1003,7 @@ def influence_matrix(
         correlations:Union[ BaseCorrelations, CustomSD, PowerLawSD],
         coupling_acomm: ndarray,
         coupling_comm: ndarray,
-        deg_positions: Optional[List[ndarray]] = None,
-        extra_dim: Optional[bool] = False):
+        deg_positions: Optional[List[ndarray]] = None):
     """Return the influence functional matrix. """
 
     if isinstance(correlations,(CustomCountingSD, CustomCountingSD_analytical)):
@@ -1055,10 +1054,6 @@ def influence_matrix(
         if deg_positions is not None:
             north_deg_positions, west_deg_positions = deg_positions
             infl=(infl[north_deg_positions].T)[west_deg_positions].T
-
-    if extra_dim:
-        nsup=1
-        infl=np.pad(infl,((0,nsup),(0,nsup)),constant_values=1.)
 
     return infl
 

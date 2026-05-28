@@ -50,8 +50,7 @@ class BaseProcessTensor(BaseAPIClass, ABC):
             transform_in: Optional[ndarray] = None,
             transform_out: Optional[ndarray] = None,
             name: Optional[Text] = None,
-            description: Optional[Text] = None,
-            extra_dim: Optional[bool] = None) -> None:
+            description: Optional[Text] = None) -> None:
         """Constructor of BaseProcessTensor. """
         self._hs_dim = hilbert_space_dimension
         self._dt = dt
@@ -261,8 +260,7 @@ class SimpleProcessTensor(BaseProcessTensor):
             transform_in: Optional[ndarray] = None,
             transform_out: Optional[ndarray] = None,
             name: Optional[Text] = None,
-            description: Optional[Text] = None,
-            extra_dim: Optional[bool] = False) -> None:
+            description: Optional[Text] = None) -> None:
         """Constructor of SimpleProcessTensor. """
         self._initial_tensor = None
         self._mpo_tensors = []
@@ -274,8 +272,7 @@ class SimpleProcessTensor(BaseProcessTensor):
             transform_in,
             transform_out,
             name,
-            description,
-            extra_dim)
+            description)
 
     def __len__(self) -> int:
         """Length of process tensor. """
@@ -445,14 +442,8 @@ class SimpleProcessTensorFinite(SimpleProcessTensor):
         caps = [np.array([1.0], dtype=NpDtype)]
         last_cap = tn.Node(caps[-1])
 
-        if self._extra_dim:
-            slicing_cap=np.concatenate([np.zeros(self.hilbert_space_dimension**2),[1]])
-        #            slicing_cap=slicing_cap/(np.sqrt(self.hilbert_space_dimension**2+1))
-        else:
-            slicing_cap=self._trace_square
-
         for step in reversed(range(length)):
-            trace_square = tn.Node(slicing_cap)
+            trace_square = tn.Node(self._trace_square)
             trace_in = tn.Node(self._trace_in)
             trace_out = tn.Node(self._trace_out)
             ten = tn.Node(self._mpo_tensors[step])
