@@ -12,7 +12,7 @@ from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize,Bounds
 
-pt_parameters = {'epsrel':10**(-7),
+pt_parameters = {'epsrel':10**(-9),
                  'alpha':0.1,
                  'omega_cutoff':1,                 
                  'temp':0.131,
@@ -127,7 +127,10 @@ dynamicspttest2=oqupy.compute_dynamics(
 # %%
 stateslist=dynamicspttest2._states
 traceslist=np.array(dynamicspttest2._states).trace(axis1=1,axis2=2)
-dynamicspttest2._states=[state/trace for state,trace in zip(stateslist,traceslist)]
+plt.plot(np.log(np.array(traceslist)))
+print(traceslist[73]/traceslist[74])
+
+# dynamicspttest2._states=[state/trace for state,trace in zip(stateslist,traceslist)]
 #%% print(dynamicspttest2._states.trace(axis1=1,axis2=2))
 
 # %%

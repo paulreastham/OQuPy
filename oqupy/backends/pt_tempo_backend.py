@@ -65,7 +65,8 @@ class PtTempoBackend:
             epsrel: float,
             config: Dict,
             degeneracy_maps: Optional[List[ndarray]] = None,
-            alpha_t: Optional[ndarray] = None):
+            alpha_t: Optional[ndarray] = None,
+            extra_dim: Optional[bool] = False):
         """Create a BasePtTempoBackend object. """
         self._dimension = dimension
         self._influence = influence
@@ -79,6 +80,7 @@ class PtTempoBackend:
         self._config = config
         self._step = None
         self._degeneracy_maps = degeneracy_maps
+        self._extra_dim = extra_dim
 
         if "backend" in config:
             self._backend = config["backend"]
@@ -110,7 +112,10 @@ class PtTempoBackend:
         # create mpo last
         # copy and contract mpo to mps
 
-        scale = self._dimension
+        if self._extra_dim:
+            scale = 1
+        else:
+            scale = 1 # self._dimension
 
         self._sum_north_scaled = self._sum_north * scale
 
@@ -316,22 +321,27 @@ class PtTempoBackend:
         assert n == self._num_steps
         assert step < n
 
+        if self._extra_dim:
+            scale = 1/self._dimension
+        else:
+            scale= 1 #self._dimension
+
         if step == 0:
             order = [self._mps.bond_edges[0],self._mps.array_edges[0][0]]
             first_t = self._mps.nodes[0].reorder_edges(order).get_tensor()
             first_t = util.add_singleton(first_t, 0)
-            tensor = first_t * self._dimension
+            tensor = first_t * scale
         elif step == n-1:
             order = [self._mps.bond_edges[-1],self._mps.array_edges[-1][0]]
             last_t = self._mps.nodes[-1].reorder_edges(order).get_tensor()
             last_t = util.add_singleton(last_t, 1)
-            tensor = last_t * self._dimension
+            tensor = last_t * scale
         else:
             order = [self._mps.bond_edges[step-1],
             self._mps.bond_edges[step],
             self._mps.array_edges[step][0]]
             temp_t = self._mps.nodes[step].reorder_edges(order).get_tensor()
-            tensor = temp_t * self._dimension
+            tensor = temp_t * scale
 
         return tensor
 

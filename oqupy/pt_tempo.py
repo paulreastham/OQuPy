@@ -246,7 +246,8 @@ class PtTempo(BaseAPIClass):
                 epsrel=self._parameters.epsrel,
                 config=self._backend_config,
                 degeneracy_maps=degeneracy_maps,
-                alpha_t=self._alpha_t)
+                alpha_t=self._alpha_t,
+                extra_dim=self._extra_dim)
 
     def _influence(self, dk: int) -> ndarray:
         """Create the influence functional matrix for a time step distance
