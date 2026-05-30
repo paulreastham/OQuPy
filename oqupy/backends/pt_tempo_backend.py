@@ -115,7 +115,7 @@ class PtTempoBackend:
         if self._extra_dim:
             scale = 1
         else:
-            scale = 1 # self._dimension
+            scale = self._dimension  # as in original code. set to 1 and in get_mpo_tensor to turn off rescaling
 
         self._sum_north_scaled = self._sum_north * scale
 
@@ -324,7 +324,7 @@ class PtTempoBackend:
         if self._extra_dim:
             scale = 1/self._dimension
         else:
-            scale= 1 #self._dimension
+            scale= self._dimension # as in original code. set to 1 and in initialize() to turn off rescaling
 
         if step == 0:
             order = [self._mps.bond_edges[0],self._mps.array_edges[0][0]]
