@@ -1,5 +1,6 @@
 # %% 
 import oqupy.backends.node_array as na
+import numpy as np
 
 # norm of an mps defined the usual way
 def normmps(mps):

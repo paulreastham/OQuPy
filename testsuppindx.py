@@ -12,7 +12,7 @@ from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize,Bounds
 
-from normmps import normmps
+from normmps import normmps,normmpscaps
 
 pt_parameters = {'epsrel':10**(-7),
                  'alpha':0.1,
@@ -38,6 +38,7 @@ correlations = oqupy.PowerLawSD(alpha=alpha,
                                 cutoff_type='exponential',
                                 temperature=temperature)
 bath = oqupy.Bath(op.sigma("z")/2.0, correlations)
+#bath = oqupy.Bath(np.zeros((2,2)),correlations)
 parameters=oqupy.TempoParameters(dt=dt,epsrel=epsrel,dkmax=500)
 
 tf=15
@@ -48,19 +49,28 @@ ptt=oqupy.PtTempo(bath=bath,
             end_time=tf,
             parameters=parameters,
             extra_dim=False)
+# %%
+
+print(ptt._influence(0))
+
+
 # %% 
 ptt.compute()
 
 mps=ptt._backend_instance._mps.copy()
 
 nmps=normmps(mps)
-print(nmps)
-
+print(nmps) 
 
 # %%
 
 
 pttempotest=ptt.get_process_tensor()
+
+ntrcaps=normmpscaps(pttempotest,trace_cap=np.identity(2))
+print(ntrcaps) # is hilbert_space_dimension**(nsteps)
+# %%
+
 print('MPO dimensions ',pttempotest.get_mpo_tensor(2).shape)
 
 ptt2=oqupy.PtTempo(bath=bath,
@@ -70,6 +80,8 @@ ptt2=oqupy.PtTempo(bath=bath,
             extra_dim=True)
 ptt2.compute()
 pttempotest2=ptt2.get_process_tensor()
+
+# %%
 
 print('MPO dimensions ',pttempotest2.get_mpo_tensor(2).shape)
 # %% 
@@ -95,17 +107,21 @@ result=oqupy.SimpleProcessTensor(
     name=ptorg.name,
     description=ptorg.description
     )
-    
+
 for step in range(len(ptorg)):
     result.set_cap_tensor(step,ptorg.get_cap_tensor(step))
-    mpotensor=ptorg.get_mpo_tensor(step,transformed=False)
+    mpotensor=ptorg._mpo_tensors[step]
     a,b,*_=mpotensor.shape
     if mpotensor.ndim==4:
-        mpotensor=mpotensor[:,:,:-1,:-1]
+        mpotensor=(mpotensor[:,:,:-1,:-1])
     elif mpotensor.ndim==3:
-        mpotensor=mpotensor[:,:,:-1,:-1]
+        mpotensor=mpotensor[:,:,:-1]
     result.set_mpo_tensor(step,mpotensor)      
 result.set_cap_tensor(len(ptorg),ptorg.get_cap_tensor(len(ptorg)))    
+
+# %%
+ntrcaps=normmpscaps(result,trace_cap=np.identity(2))
+print(ntrcaps) # is hilbert_space_dimension**(nsteps)
 
 # %%
 

@@ -322,7 +322,7 @@ class PtTempoBackend:
         assert step < n
 
         if self._extra_dim:
-            scale = 1/self._dimension
+            scale = 1# /self._dimension
         else:
             scale= self._dimension # as in original code. set to 1 and in initialize() to turn off rescaling
 
