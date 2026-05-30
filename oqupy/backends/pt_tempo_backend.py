@@ -113,7 +113,7 @@ class PtTempoBackend:
         # copy and contract mpo to mps
 
         if self._extra_dim:
-            scale = 1
+            scale = np.sqrt(self._dimension**2+1)
         else:
             scale = self._dimension  # as in original code. set to 1 and in get_mpo_tensor to turn off rescaling
 
@@ -167,7 +167,6 @@ class PtTempoBackend:
 
             influences_mpo.append(infl_mpo)
             influences_mps.append(infl_mps)
-
 
 
         self._mpo = na.NodeArray(influences_mpo,
@@ -322,7 +321,7 @@ class PtTempoBackend:
         assert step < n
 
         if self._extra_dim:
-            scale = 1# /self._dimension
+            scale = np.sqrt(self._dimension**2+1)
         else:
             scale= self._dimension # as in original code. set to 1 and in initialize() to turn off rescaling
 
