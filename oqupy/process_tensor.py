@@ -446,7 +446,9 @@ class SimpleProcessTensorFinite(SimpleProcessTensor):
         last_cap = tn.Node(caps[-1])
 
         if self._extra_dim:
-            slicing_cap=np.concatenate([self._trace_square,[0]])
+#            slicing_cap=np.concatenate([self._trace_square,[0]])
+            slicing_cap=np.zeros(self.hilbert_space_dimension**2+1)
+            slicing_cap[-1]=1.0
         else:
             slicing_cap=self._trace_square
 

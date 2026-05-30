@@ -165,8 +165,8 @@ print(traceslist[73]/traceslist[74])
 t,sx=dynamicspttest.expectations(op.sigma('x'),real=True)
 
 # renormalize traces 
-#tracefromtest=dynamicspttest2.states[10].trace()
-#dynamicspttest2._states=dynamicspttest2._states/tracefromtest
+tracefromtest=dynamicspttest2.states[10].trace()
+dynamicspttest2._states=dynamicspttest2._states/tracefromtest
 
 t2,sx2=dynamicspttest2.expectations(op.sigma('x'),real=True)
 

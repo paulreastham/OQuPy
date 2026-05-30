@@ -1058,8 +1058,13 @@ def influence_matrix(
 
     if extra_dim:
         nsup=1
-        infl=np.pad(infl,((0,nsup),(0,nsup)),constant_values=1.)
-
+        infl=np.pad(infl,((0,nsup),(0,nsup)),constant_values=0.)
+        if dk == 0:
+            infl[-1,-1]=1.
+        else:
+            infl[-1,:]=1.
+            infl[:,-1]=1.
+    
     return infl
 
 def influence_matrix_marked(
