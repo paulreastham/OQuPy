@@ -113,7 +113,7 @@ class PtTempoBackend:
         # copy and contract mpo to mps
 
         if self._extra_dim:
-            scale = np.sqrt(self._dimension**2+1)
+            scale = self._dimension
         else:
             scale = self._dimension  # as in original code. set to 1 and in get_mpo_tensor to turn off rescaling
 
@@ -321,7 +321,7 @@ class PtTempoBackend:
         assert step < n
 
         if self._extra_dim:
-            scale = np.sqrt(self._dimension**2+1)
+            scale = self._dimension
         else:
             scale= self._dimension # as in original code. set to 1 and in initialize() to turn off rescaling
 
