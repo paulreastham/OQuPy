@@ -12,7 +12,9 @@ from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize,Bounds
 
-pt_parameters = {'epsrel':10**(-9),
+from normmps import normmps
+
+pt_parameters = {'epsrel':10**(-7),
                  'alpha':0.1,
                  'omega_cutoff':1,                 
                  'temp':0.131,
@@ -46,8 +48,17 @@ ptt=oqupy.PtTempo(bath=bath,
             end_time=tf,
             parameters=parameters,
             extra_dim=False)
-
+# %% 
 ptt.compute()
+
+mps=ptt._backend_instance._mps.copy()
+
+nmps=normmps(mps)
+print(nmps)
+
+
+# %%
+
 
 pttempotest=ptt.get_process_tensor()
 print('MPO dimensions ',pttempotest.get_mpo_tensor(2).shape)
