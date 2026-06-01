@@ -39,7 +39,8 @@ def state_gradient(
         parameters: ndarray,
         start_time: Optional[float] = 0.0,
         num_steps: Optional[int]=None,
-        progress_type: Optional[Text] = None) -> Dict:
+        progress_type: Optional[Text] = None,
+        dynamics_only: Optional[bool]=False) -> Dict:
     """
     Compute system dynamics and gradient of an objective function Z with
     respect to a parameterized System for a given set of control
@@ -91,10 +92,14 @@ def state_gradient(
         start_time=start_time,
         dt=dt,
         num_steps=num_steps,
-        progress_type=progress_type)
+        progress_type=progress_type,
+        dynamics_only=dynamics_only)
 
-    get_half_props= system.get_propagators(dt,parameters)
-    get_prop_derivatives = system.get_propagator_derivatives(dt,parameters)
+    if dynamics_only:
+        return dynamics
+    else:
+        get_half_props= system.get_propagators(dt,parameters)
+        get_prop_derivatives = system.get_propagator_derivatives(dt,parameters)
 
     final_derivs = _chain_rule(
         adjoint_tensor=grad_prop,
@@ -111,242 +116,7 @@ def state_gradient(
         'dynamics':dynamics
     }
 
-    return return_dict
-
-def state_gradient_env_dependent(
-        system: Union[ParameterizedSystem,ParameterizedSystem2ls],
-        initial_state: ndarray,
-        target_derivative: Union[Callable, ndarray],
-        process_tensors: List[BaseProcessTensor],
-        parameters: ndarray,
-        mpo_derivatives: List[ndarray],
-        start_time: Optional[float] = 0.0,
-        num_steps: Optional[int]=None,
-        progress_type: Optional[Text] = None) -> Dict:
-    """
-    Compute system dynamics and gradient of an objective function Z with
-    respect to a parameterized System for a given set of control
-    parameters, accounting for the interaction with an environment described by
-    process tensors. The target state corresponds to (dZ/drho_f).
-
-    Parameters:
-    -----------
-    system: ParametrizedSystem
-        Parameterized system taking M parameters.
-    initial_state: ndarray
-        The initial density matrix to propagate forwards
-    target_derivative: Union[Callable, ndarray]
-        A pure target state transposed or derivative w.r.t. an objective
-        function.
-    process_tensors: List[BaseProcessTensor]
-        A list of process tensors (each with N time steps) representing the
-        environment.
-    parameters: ndarray
-        A matrix of dimension 2N x M corresponding to the M parameters at each
-        half time step.
-    start_time: float
-        Optional start time offset.
-    progress_type: str (default = None)
-        The progress report type during the computation. Types are:
-        {``silent``, ``simple``, ``bar``}. If `None` then
-        the default progress type is used.
-
-    Returns:
-    --------
-    return_dict: Dict
-        The return dictionary has the fields:
-        'final_state' : the final state after evolving the initial state
-        'gradprop' : derivatives of Z with respect to half-step propagators
-        'gradient' : derivatives of Z with respect to the parameters
-        'dynamics' : the dynamics of the system
-    """
-    check_isinstance(parameters, ndarray, 'parameters')
-
-    dt = process_tensors[0].dt
-    num_parameters = parameters.shape[1] 
-
-    grad_prop, grad_mpo,dynamics = compute_gradient_and_dynamics_env_dependent(
-        system=system,
-        initial_state=initial_state,
-        target_derivative=target_derivative,
-        process_tensors=process_tensors,
-        parameters=parameters,
-        mpo_derivatives=mpo_derivatives,
-        start_time=start_time,
-        dt=dt,
-        num_steps=num_steps,
-        progress_type=progress_type)
-
-
-    get_half_props= system.get_propagators(dt,parameters)
-    get_prop_derivatives = system.get_propagator_derivatives(dt,parameters)
-
-    final_derivs = _chain_rule_with_mpo(
-        adjoint_tensor_prop=grad_prop,
-        adjoint_tensor_mpo=grad_mpo,
-        dprop_dparam=get_prop_derivatives,
-        propagators=get_half_props,
-        num_steps=len(grad_prop),
-        num_parameters=num_parameters,
-        progress_type=progress_type)
-
-    return_dict = {
-        'final_state':dynamics.states[-1],
-        'gradprop':grad_prop,
-        'gradient':final_derivs,
-        'dynamics':dynamics
-    }
-
-    return return_dict
-
-def state_gradient_coarse(
-        system: Union[ParameterizedSystem,ParameterizedSystem2ls],
-        initial_state: ndarray,
-        target_derivative: Union[Callable, ndarray],
-        process_tensors: List[BaseProcessTensor],
-        parameters: ndarray,
-        opt_steps: ndarray,
-        start_time: Optional[float] = 0.0,
-        num_steps: Optional[int]=None,
-        progress_type: Optional[Text] = None) -> Dict:
-    """
-    Compute system dynamics and gradient of an objective function Z with
-    respect to a parameterized System for a given set of control
-    parameters, accounting for the interaction with an environment described by
-    process tensors. The target state corresponds to (dZ/drho_f).
-
-    Parameters:
-    -----------
-    system: ParametrizedSystem
-        Parameterized system taking M parameters.
-    initial_state: ndarray
-        The initial density matrix to propagate forwards
-    target_derivative: Union[Callable, ndarray]
-        A pure target state transposed or derivative w.r.t. an objective
-        function.
-    process_tensors: List[BaseProcessTensor]
-        A list of process tensors (each with N time steps) representing the
-        environment.
-    parameters: ndarray
-        A matrix of dimension 2N x M corresponding to the M parameters at the specified half time steps
-    opt_steps : ndarray
-        A matrix of dimension N x M corresponding 
-    start_time: float
-        Optional start time offset.
-    progress_type: str (default = None)
-        The progress report type during the computation. Types are:
-        {``silent``, ``simple``, ``bar``}. If `None` then
-        the default progress type is used.
-
-    Returns:
-    --------
-    return_dict: Dict
-        The return dictionary has the fields:
-        'final_state' : the final state after evolving the initial state
-        'gradprop' : derivatives of Z with respect to half-step propagators
-        'gradient' : derivatives of Z with respect to the parameters
-        'dynamics' : the dynamics of the system
-    """
-    check_isinstance(parameters, ndarray, 'parameters')
-
-    assert opt_steps[-1]==num_steps, \
-        'last element of opt_steps must number of steps'
-
-    dt = process_tensors[0].dt
-    num_parameters = parameters.shape[1] 
-
-    grad_prop, dynamics = compute_gradient_and_dynamics(
-        system=system,
-        initial_state=initial_state,
-        target_derivative=target_derivative,
-        process_tensors=process_tensors,
-        parameters=parameters,
-        start_time=start_time,
-        dt=dt,
-        num_steps=num_steps,
-        progress_type=progress_type)
-
-
-    get_half_props= system.get_propagators(dt,parameters)
-    get_prop_derivatives = system.get_propagator_derivatives(dt,parameters)
-
-    final_derivs = _chain_rule_coarse(
-        adjoint_tensor=grad_prop,
-        dprop_dparam=get_prop_derivatives,
-        propagators=get_half_props,
-        num_steps=num_steps,
-        opt_steps=opt_steps,
-        num_parameters=num_parameters,
-        progress_type=progress_type)
-    
-
-    return_dict = {
-        'final_state':dynamics.states[-1],
-        'gradprop':grad_prop,
-        'gradient':final_derivs,
-        'dynamics':dynamics
-    }
-
-    return return_dict
-
-def _chain_rule_coarse(
-        adjoint_tensor:ndarray,
-        dprop_dparam:Callable[[int], Tuple[ndarray,ndarray]],
-        propagators:Callable[[int], Tuple[ndarray,ndarray]],
-        num_steps:int,
-        opt_steps:ndarray,
-        num_parameters:int,
-        progress_type: Optional[Text] = None):
-
-    def combine_derivs(
-            target_deriv,
-            pre_prop,
-            post_prop):
-        target_deriv = tn.Node(target_deriv)
-        pre_node=tn.Node(pre_prop)
-        post_node=tn.Node(post_prop)
-        target_deriv[3] ^ post_node[1]
-        target_deriv[2] ^ post_node[0]
-        target_deriv[1] ^ pre_node[1]
-        target_deriv[0] ^ pre_node[0]
-
-        final_node = target_deriv @ pre_node \
-                        @ post_node
-        tensor = final_node.tensor
-
-        return tensor
-
-    total_derivs = np.zeros((2*num_steps,num_parameters),dtype='complex128')
-
-    title = "--> Apply chain rule:"
-    prog_bar = get_progress(progress_type)(num_steps, title)
-    prog_bar.enter()
-
-    start=0
-    for end in opt_steps:
-        first_half_prop_derivs,second_half_prop_derivs = dprop_dparam(start)
-        first_half_prop, second_half_prop = propagators(start)
-
-        for k in range(start,end):
-
-            prog_bar.update(k)
-
-            for j in range(0,num_parameters):
-                total_derivs[2*k][j] = combine_derivs(
-                                adjoint_tensor[k],
-                                first_half_prop_derivs[j].T,
-                                second_half_prop.T)
-                total_derivs[2*k+1][j] = combine_derivs(
-                    adjoint_tensor[k],
-                    first_half_prop.T,
-                    second_half_prop_derivs[j].T)
-        
-        start=end
-
-    prog_bar.update(num_steps)
-    prog_bar.exit()
-
-    return total_derivs
+        return return_dict
 
 def _chain_rule(
         adjoint_tensor:ndarray,
@@ -471,7 +241,8 @@ def compute_gradient_and_dynamics(
         num_steps: Optional[int] = None,
         control: Optional[Control] = None,
         record_all: Optional[bool] = True,
-        progress_type: Optional[Text] = None) -> Tuple[List, Dynamics]:
+        progress_type: Optional[Text] = None,
+        dynamics_only:Optional[bool]=False) -> Tuple[List, Dynamics]:
     """
     Compute some objective function and calculate its gradient w.r.t.
     some control parameters, accounting for interaction with an environment
@@ -630,6 +401,9 @@ def compute_gradient_and_dynamics(
         times = [start_time + len(states)*dt]
 
     dynamics = Dynamics(times=list(times),states=states)
+
+    if dynamics_only:
+        return [],dynamics
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # ~~~~~ Backpropagation ~~~~~~
