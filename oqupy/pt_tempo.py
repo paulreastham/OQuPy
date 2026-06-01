@@ -342,7 +342,8 @@ def pt_tempo_compute(
         progress_type: Optional[Text] = None,
         name: Optional[Text] = None,
         description: Optional[Text] = None,
-        alpha_t : Optional[ndarray] = None) -> BaseProcessTensor:
+        alpha_t : Optional[ndarray] = None,
+        extra_dim : Optional[bool] = False) -> BaseProcessTensor:
     """
     Shortcut for creating a process tensor by performing a PT-TEMPO
     computation.
@@ -395,6 +396,7 @@ def pt_tempo_compute(
                   backend_config,
                   name,
                   description,
-                  alpha_t)
+                  alpha_t,
+                  extra_dim)
     ptt.compute(progress_type=progress_type)
     return ptt.get_process_tensor()

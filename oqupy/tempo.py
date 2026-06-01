@@ -1008,53 +1008,53 @@ def influence_matrix(
     """Return the influence functional matrix. """
 
     if isinstance(correlations,(CustomCountingSD, CustomCountingSD_analytical)):
-        return influence_matrix_marked(dk,parameters,correlations,coupling_acomm,
+        infl=influence_matrix_marked(dk,parameters,correlations,coupling_acomm,
             coupling_comm,deg_positions)
+    else:
+        dt = parameters.dt
+        dkmax = parameters.dkmax
 
-    dt = parameters.dt
-    dkmax = parameters.dkmax
-
-    if dk == 0:
-        time_1 = 0.0
-        time_2 = None
-        shape = "upper-triangle"
-    elif dk < 0:
-        time_1 = float(dkmax) * dt
-        if parameters.add_correlation_time is not None:
-            time_2 = float(dkmax) * dt \
-                + np.min([float(-dk) * dt,
-                            1.0*dt + parameters.add_correlation_time])
+        if dk == 0:
+            time_1 = 0.0
+            time_2 = None
+            shape = "upper-triangle"
+        elif dk < 0:
+            time_1 = float(dkmax) * dt
+            if parameters.add_correlation_time is not None:
+                time_2 = float(dkmax) * dt \
+                    + np.min([float(-dk) * dt,
+                                1.0*dt + parameters.add_correlation_time])
+            else:
+                return None
+            shape = "rectangle"
         else:
-            return None
-        shape = "rectangle"
-    else:
-        time_1 = float(dk) * dt
-        time_2 = None
-        shape = "square"
+            time_1 = float(dk) * dt
+            time_2 = None
+            shape = "square"
 
-    eta_dk = correlations.correlation_2d_integral( \
-        delta=dt,
-        time_1=time_1,
-        time_2=time_2,
-        shape=shape)
-       # epsrel=parameters.epsrel)
-#/!\ SVD truncation epsrel doesn't necessarily match the integration epsrel
+        eta_dk = correlations.correlation_2d_integral( \
+            delta=dt,
+            time_1=time_1,
+            time_2=time_2,
+            shape=shape)
+        # epsrel=parameters.epsrel)
+    #/!\ SVD truncation epsrel doesn't necessarily match the integration epsrel
 
-    op_p = coupling_acomm
-    op_m = coupling_comm
+        op_p = coupling_acomm
+        op_m = coupling_comm
 
-    if dk == 0:
-        infl = np.diag(np.exp(-op_m*(eta_dk.real*op_m \
-                                        + 1j*eta_dk.imag*op_p)))
-        if deg_positions is not None:
-            north_deg_positions = deg_positions[0]
-            infl = np.diag(infl)[north_deg_positions]
-    else:
-        infl = np.exp(-np.outer(eta_dk.real*op_m \
-                                + 1j*eta_dk.imag*op_p, op_m))
-        if deg_positions is not None:
-            north_deg_positions, west_deg_positions = deg_positions
-            infl=(infl[north_deg_positions].T)[west_deg_positions].T
+        if dk == 0:
+            infl = np.diag(np.exp(-op_m*(eta_dk.real*op_m \
+                                            + 1j*eta_dk.imag*op_p)))
+            if deg_positions is not None:
+                north_deg_positions = deg_positions[0]
+                infl = np.diag(infl)[north_deg_positions]
+        else:
+            infl = np.exp(-np.outer(eta_dk.real*op_m \
+                                    + 1j*eta_dk.imag*op_p, op_m))
+            if deg_positions is not None:
+                north_deg_positions, west_deg_positions = deg_positions
+                infl=(infl[north_deg_positions].T)[west_deg_positions].T
 
     if extra_dim:
         nsup=1

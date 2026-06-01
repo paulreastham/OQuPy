@@ -112,11 +112,8 @@ class PtTempoBackend:
         # create mpo last
         # copy and contract mpo to mps
 
-        if self._extra_dim:
-            scale = self._dimension
-        else:
-            scale = self._dimension  # as in original code. set to 1 and in get_mpo_tensor to turn off rescaling
-
+        scale = self._dimension # used to rescale MPS during computation. can set to 1 here and in get_mpo_tensor below to remove rescaling
+ 
         self._sum_north_scaled = self._sum_north * scale
 
         if self._degeneracy_maps is not None:
@@ -320,10 +317,7 @@ class PtTempoBackend:
         assert n == self._num_steps
         assert step < n
 
-        if self._extra_dim:
-            scale = self._dimension
-        else:
-            scale= self._dimension # as in original code. set to 1 and in initialize() to turn off rescaling
+        scale = self._dimension # used to rescale MPS after computation. can set to 1 here and in initialize to remove rescaling
 
         if step == 0:
             order = [self._mps.bond_edges[0],self._mps.array_edges[0][0]]
@@ -353,6 +347,16 @@ class PtTempoBackend:
             self._process_tensor.set_mpo_tensor(step, mpo_tensor)
         self._process_tensor.compute_caps()
 
+        # remove the extra dimension if used for creating caps
+        if self._extra_dim:
+            for step in range(self.num_steps):
+                mpo_tensor=self._process_tensor._mpo_tensors[step]
+                a,b,*_=mpo_tensor.shape
+                if mpo_tensor.ndim==4:
+                   mpo_tensor=(mpotensor[:,:,:-1,:-1])
+                elif mpo_tensor.ndim==3:
+                  mpo_tensor=mpo_tensor[:,:,:-1]
+                self._process_tensor.set_mpo_tensor(step,mpo_tensor)
 
 class PtTempoBackendOld:
     """
