@@ -351,7 +351,8 @@ class BaseTempoBackend:
             epsrel: float,
             config: Optional[Dict] = None,
             degeneracy_maps: Optional[List[ndarray]] = None,
-            dim: Optional[int] = None):
+            dim: Optional[int] = None,
+            alpha_t : Optional[ndarray] = None):
         """Create a TempoBackend object. """
         self._initial_state = initial_state
         self._influence = influence
@@ -360,6 +361,7 @@ class BaseTempoBackend:
         self._sum_west = sum_west
         self._dkmax = dkmax
         self._epsrel = epsrel
+        self._alpha_t = alpha_t
         self._step = None
         self._state = None
         self._config = TEMPO_BACKEND_CONFIG if config is None else config
@@ -515,6 +517,14 @@ class BaseTempoBackend:
                               name="Thee Time Evolving MPO",
                               copy=False)
 
+        if self._alpha_t is not None:             
+            tensors = [nodes.get_tensor() for nodes in mpo.nodes] 
+
+            exponents = [np.sqrt(self._alpha_t[current_step-1]*self._alpha_t[k2]) for k2 in range(0,current_step)]
+            exponents_cut = exponents[:len(tensors)]
+
+            [node.set_tensor(tensor**exponent) for node,tensor,exponent in zip(mpo.nodes, tensors, exponents_cut)]
+
         mpo.name = "temporary MPO"
         mpo.apply_vector(self._sum_west, left=True)
 
@@ -592,7 +602,8 @@ class TempoBackend(BaseTempoBackend):
             epsrel: float,
             config: Optional[Dict] = None,
             degeneracy_maps: Optional[List[ndarray]] = None,
-            dim: Optional[int] = None):
+            dim: Optional[int] = None,
+            alpha_t: Optional[ndarray] = None):
         """Create a TempoBackend object. """
         super().__init__(
             initial_state,
@@ -604,7 +615,8 @@ class TempoBackend(BaseTempoBackend):
             epsrel,
             config,
             degeneracy_maps,
-            dim)
+            dim,
+            alpha_t=alpha_t)
         self._propagators = propagators
 
     def initialize(self) -> Tuple[int, ndarray]:

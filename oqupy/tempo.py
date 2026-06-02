@@ -37,7 +37,8 @@ from oqupy.base_api import BaseAPIClass
 from oqupy.config import MAX_DKMAX, DEFAULT_TOLERANCE, MAX_SYS_SAMPLES
 from oqupy.config import INTEGRATE_EPSREL, SUBDIV_LIMIT
 from oqupy.config import TEMPO_BACKEND_CONFIG
-from oqupy.bath_correlations import BaseCorrelations, CustomSD
+from oqupy.bath_correlations import BaseCorrelations, CustomSD, PowerLawSD
+from oqupy.counting_bath_correlations import CustomCountingSD_analytical, CustomCountingSD
 from oqupy.dynamics import Dynamics, MeanFieldDynamics
 from oqupy.system import BaseSystem, System, TimeDependentSystem,\
     TimeDependentSystemWithField, MeanFieldSystem
@@ -46,6 +47,8 @@ from oqupy.backends.tempo_backend import MeanFieldTempoBackend
 from oqupy.backends.tempo_backend import TIBaseBackend
 from oqupy.util import check_convert, check_isinstance, check_true,\
         get_progress
+
+NoneType = type(None)
 
 class TempoParameters(BaseAPIClass):
     r"""
@@ -63,6 +66,10 @@ class TempoParameters(BaseAPIClass):
         in the underlying tensor network algorithm). - It must be small enough
         such that the numerical compression (using tensor network algorithms)
         does not truncate relevant correlations.
+    rank: int (default = np.inf)
+        The maximal rank in the singular value truncation (done in the
+        underlying tensor network algorithm). The relative error in the
+        singular value truncation might end up higher than `epsrel`.
     tcut: float (default = None)
         Length of time :math:`t_\mathrm{cut}` included in the non-Markovian
         memory. - This should be large enough to capture all non-Markovian
@@ -94,6 +101,7 @@ class TempoParameters(BaseAPIClass):
             self,
             dt: float,
             epsrel: float,
+            rank: Optional[Union[int, float, NoneType]] = np.inf,
             tcut: Optional[float] = None,
             dkmax: Optional[int] = None,
             add_correlation_time: Optional[float] = None,
@@ -118,6 +126,17 @@ class TempoParameters(BaseAPIClass):
         if tmp_epsrel <= 0.0:
             raise ValueError("Argument 'epsrel' must be positive.")
         self._epsrel = tmp_epsrel
+
+        try:
+            if rank == np.inf or rank is None:
+                tmp_rank = np.inf
+            else:
+                tmp_rank = int(rank)
+        except Exception as e:
+            raise TypeError("Argument 'rank' must be an integer.") from e
+        if tmp_rank <= 0:
+            raise ValueError("Argument 'rank' must be strictly positive.")
+        self._rank = tmp_rank
 
         self._tcut, self._dkmax = _parameter_memory_input_parse(
                 tcut, dkmax, dt)
@@ -167,6 +186,7 @@ class TempoParameters(BaseAPIClass):
         ret.append("  tcut [dkmax]         = {} [{}] \n".format(
             self.tcut, self.dkmax))
         ret.append("  epsrel               = {} \n".format(self.epsrel))
+        ret.append("  rank               = {} \n".format(self.rank))
         ret.append("  add_correlation_time = {} \n".format(
             self.add_correlation_time))
         return "".join(ret)
@@ -182,6 +202,11 @@ class TempoParameters(BaseAPIClass):
         return self._epsrel
 
     # epsrel is error tolerance for both correlation omega integration and svds
+
+    @property
+    def rank(self) -> float:
+        """The maximal rank in the singular value truncation."""
+        return self._rank
 
     @property
     def tcut(self) -> float:
@@ -314,7 +339,8 @@ class Tempo(BaseAPIClass):
             unique: Optional[bool] = False,
             backend_config: Optional[Dict] = None,
             name: Optional[Text] = None,
-            description: Optional[Text] = None) -> None:
+            description: Optional[Text] = None,
+            alpha_t : Optional[ndarray] = None) -> None:
         """Create a Tempo object. """
         super().__init__(name, description)
 
@@ -329,6 +355,8 @@ class Tempo(BaseAPIClass):
         assert isinstance(parameters, TempoParameters), \
             "Argument 'parameters' must be an instance of TempoParameters."
         self._parameters = parameters
+
+        self._alpha_t = alpha_t
 
         try:
             tmp_start_time = float(start_time)
@@ -370,6 +398,7 @@ class Tempo(BaseAPIClass):
                                  tmp_west_deg_positions]
         else:
             tmp_deg_positions = None
+
 
         return influence_matrix(
             dk,
@@ -421,6 +450,7 @@ class Tempo(BaseAPIClass):
             degeneracy_maps = None
         dkmax = self._parameters.dkmax
         epsrel = self._parameters.epsrel
+        alpha_t = self._alpha_t
         self._backend_instance = TempoBackend(
                 initial_state,
                 influence,
@@ -432,7 +462,8 @@ class Tempo(BaseAPIClass):
                 epsrel,
                 config=self._backend_config,
                 degeneracy_maps=degeneracy_maps,
-                dim=dim)
+                dim=dim,
+                alpha_t=alpha_t)
 
     def _init_dynamics(self):
         """Create a Dynamics object with metadata from the Tempo object. """
@@ -969,11 +1000,16 @@ def _check_time(end_time):
 def influence_matrix(
         dk: int,
         parameters: TempoParameters,
-        correlations: BaseCorrelations,
+        correlations:Union[ BaseCorrelations, CustomSD, PowerLawSD],
         coupling_acomm: ndarray,
         coupling_comm: ndarray,
         deg_positions: Optional[List[ndarray]] = None):
-    """Compute the influence functional matrix. """
+    """Return the influence functional matrix. """
+
+    if isinstance(correlations,(CustomCountingSD, CustomCountingSD_analytical)):
+        return influence_matrix_marked(dk,parameters,correlations,coupling_acomm,
+            coupling_comm,deg_positions)
+
     dt = parameters.dt
     dkmax = parameters.dkmax
 
@@ -999,8 +1035,10 @@ def influence_matrix(
         delta=dt,
         time_1=time_1,
         time_2=time_2,
-        shape=shape,
-        epsrel=parameters.epsrel)
+        shape=shape)
+       # epsrel=parameters.epsrel)
+#/!\ SVD truncation epsrel doesn't necessarily match the integration epsrel
+
     op_p = coupling_acomm
     op_m = coupling_comm
 
@@ -1017,6 +1055,69 @@ def influence_matrix(
             north_deg_positions, west_deg_positions = deg_positions
             infl=(infl[north_deg_positions].T)[west_deg_positions].T
 
+    return infl
+
+def influence_matrix_marked(
+        dk: int,
+        parameters: TempoParameters,
+        correlations: Union[CustomCountingSD_analytical,CustomCountingSD],
+        coupling_acomm: ndarray,
+        coupling_comm: ndarray,
+        deg_positions: Optional[List[ndarray]] = None):
+    """Compute the influence functional matrix. """
+    dt = parameters.dt
+    dkmax = parameters.dkmax
+
+    if dk == 0:
+            time_1 = 0.0
+            time_2 = None
+            shape = "upper-triangle"
+    elif dk < 0:
+        time_1 = float(dkmax) * dt
+        if parameters.add_correlation_time is not None:
+                time_2 = float(dkmax) * dt \
+                    + np.min([float(-dk) * dt,
+                                1.0*dt + parameters.add_correlation_time])
+        else:
+            return None
+        shape = "rectangle"
+    else:
+        time_1 = float(dk) * dt
+        time_2 = None
+        shape = "square"
+
+    etaA1_dk = correlations.correlation_2d_integral_marked( \
+        delta=dt,
+        time_1=time_1,
+        time_2=time_2,
+        shape=shape,
+        which_corr='A1')
+        #epsrel=parameters.epsrel)
+    etaA2_dk = correlations.correlation_2d_integral_marked( \
+        delta=dt,
+        time_1=time_1,
+        time_2=time_2,
+        shape=shape,
+        which_corr='A2')
+        #epsrel=parameters.epsrel)
+    etaC_dk = correlations.correlation_2d_integral_marked( \
+        delta=dt,
+        time_1=time_1,
+        time_2=time_2,
+        shape=shape,
+        which_corr='C')
+        #epsrel=parameters.epsrel)  
+    op_p = coupling_acomm
+    op_m = coupling_comm
+
+    if dk == 0:
+            infl = np.diag(np.exp((op_m*((etaC_dk.real-1j*etaA1_dk.imag)*op_p+
+                (1j*etaC_dk.imag-etaA1_dk.real)*op_m)-op_p*((etaC_dk.real+1j*etaA2_dk.imag)*op_m+
+                    (etaA2_dk.real+1j*etaC_dk.imag)*op_p))))
+    else:
+            infl = np.exp(np.outer(etaC_dk.real*op_p-1j*etaA1_dk.imag*op_p+
+                1j*etaC_dk.imag*op_m-etaA1_dk.real*op_m,op_m)-np.outer(etaA2_dk.real*op_p+
+                    1j*etaC_dk.imag*op_p+etaC_dk.real*op_m+1j*etaA2_dk.imag*op_m,op_p))
     return infl
 
 GUESS_WARNING_MSG = "Estimating TEMPO parameters. " \
@@ -1151,7 +1252,8 @@ def tempo_compute(
         backend_config: Optional[Dict] = None,
         progress_type: Optional[Text] = None,
         name: Optional[Text] = None,
-        description: Optional[Text] = None) -> Dynamics:
+        description: Optional[Text] = None,
+        alpha_t : Optional[ndarray] = None) -> Dynamics:
     """
     Shortcut for creating a Tempo object and running the computation.
     Cannot be used to create MeanFieldTempo objects.
@@ -1204,7 +1306,8 @@ def tempo_compute(
                   unique,
                   backend_config,
                   name,
-                  description)
+                  description,
+                  alpha_t)
     tempo.compute(end_time, progress_type=progress_type)
     return tempo.get_dynamics()
 
