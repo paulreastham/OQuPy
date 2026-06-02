@@ -97,9 +97,9 @@ def state_gradient(
 
     if dynamics_only:
         return dynamics
-    else:
-        get_half_props= system.get_propagators(dt,parameters)
-        get_prop_derivatives = system.get_propagator_derivatives(dt,parameters)
+
+    get_half_props= system.get_propagators(dt,parameters)
+    get_prop_derivatives = system.get_propagator_derivatives(dt,parameters)
 
     final_derivs = _chain_rule(
         adjoint_tensor=grad_prop,
@@ -116,7 +116,7 @@ def state_gradient(
         'dynamics':dynamics
     }
 
-        return return_dict
+    return return_dict
 
 def _chain_rule(
         adjoint_tensor:ndarray,

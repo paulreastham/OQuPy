@@ -87,7 +87,6 @@ __all__ = [
     'SimpleProcessTensorFinite',
     'SimpleProcessTensorInfinite',
     'state_gradient',
-    'state_gradient_env_dependent',
     'System',
     'SystemChain',
     'Tempo',
@@ -121,7 +120,6 @@ from oqupy.dynamics import Dynamics
 from oqupy.dynamics import MeanFieldDynamics
 
 from oqupy.gradient import state_gradient
-from oqupy.gradient import state_gradient_env_dependent
 from oqupy.gradient import compute_gradient_and_dynamics
 
 from oqupy import helpers
