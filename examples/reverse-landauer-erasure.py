@@ -59,11 +59,10 @@ correlationscf=oqupy.counting_bath_correlations.CustomCountingSD_analytical(j_fu
 bathcf = oqupy.Bath(op.sigma("z")/2.0, correlationscf)
 ttiheats=TTITempo(bathcf,start_time=0.0,parameters=parameters)
 ttiheatpt=ttiheats.get_process_tensor()
-# hamiltonian with a linear ramp from inisplit to 0 over time tprot
+# hamiltonian with a linear ramp from inisplit to 0 over time tf
 # initial state in thermal equilibrium with bath
 # %%
-tprot=tf
-num_steps=int(tprot/dt)
+num_steps=int(tf/dt)
 inisplit=1.0
 # choose initial state to be thermal equilibrium given hamiltonian inisplit*(sigmax/2)
 z=2*np.cosh(inisplit/(2*temperature))
@@ -71,57 +70,33 @@ pupx=np.exp(-inisplit/(2*temperature))/z
 pdnx=np.exp(+inisplit/(2*temperature))/z
 rhoini=oqupy.operators.spin_dm('x+')*pupx+oqupy.operators.spin_dm('x-')*pdnx
 system=oqupy.System(inisplit*op.sigma('x')/2)
-# optimal thermodynamic protocol from Mathematica notebook, with 
-
-# %% 
-
-# def hx(t):
-#     indx=int(t/dt)
-#     delt=t-indx*dt
-#     dy=opt[indx+1]-opt[indx]
-#     val=opt[indx]+dy*delt/dt
-#     return val
-
-
-
-# def hx(t):
-#     return inisplit*(1-t/tprot)
-# def hamiltonian_t(t):
-#     return op.sigma('x')*hx(t)/2
-# system = oqupy.TimeDependentSystem(hamiltonian_t)
+# parameterizedsystem with time-dependent splitting spl
 
 def hamiltonian(spl):
      return op.sigma('x')*spl/2
 
 system = oqupy.ParameterizedSystem(hamiltonian)
 
-dynamics=oqupy.compute_dynamics(
-    process_tensor=[ttipt],        
-    system=system,
-    initial_state=rhoini,
-    start_time=0,
-    num_steps=num_steps)
-t, s_x = dynamics.expectations(op.sigma('x'), real=True)
+halfsteptimes=(dt/4)+np.arange(num_steps*2)*dt/2
+tdsplit=np.ones(num_steps*2) # simple test
+tdsplit=tdsplit.reshape((num_steps*2,1))
 
-dynamicscf = oqupy.compute_dynamics(
-    process_tensor=[ttiheatpt],        
-    system=system,
-    initial_state=rhoini,
-    start_time=0,
-    num_steps=num_steps)
+dynamics=oqupy.state_gradient(system,rhoini,[],[ttipt],tdsplit,start_time=0.0,num_steps=num_steps,dynamics_only=True)
+
+dynamicscf = oqupy.state_gradient(system,rhoini,[],[ttiheatpt],tdsplit,start_time=0.0,num_steps=num_steps,dynamics_only=True)
 
 heats=dynamicscf.states.trace(axis1=1,axis2=2).imag/u
 
 fig,axs=plt.subplots(3)
 
-axs[0].plot(t,heats,label=tprot)
+axs[0].plot(t,heats)
 axs[0].set_xlabel(r'$t$')
 axs[0].set_ylabel(r'$\langle Q \rangle$')
 axs[1].plot(t,s_x)
 axs[1].set_xlabel(r'$t$')
 axs[1].set_ylabel(r'$\langle \sigma_x \rangle$')
 axs[1].set_ylim(-1.0,0.0)
-axs[2].plot(t,[hx(tme) for tme in t])
+axs[2].plot(halfsteptimes,tdsplit)
 plt.legend()
 plt.show()
 

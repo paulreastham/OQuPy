@@ -8,7 +8,7 @@ Example of some of the capabilities of the code in the integrationtcd branch.
 """
 
 import sys
-sys.path.insert(0,'.')
+sys.path.insert(0,'..')
 
 import oqupy
 import oqupy.operators as op
