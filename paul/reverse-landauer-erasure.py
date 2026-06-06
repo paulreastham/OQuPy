@@ -6,10 +6,13 @@ Example of some of the capabilities of the code in the integrationtcd branch.
 - Time-dependent system-environment coupling in PT-TEMPO and TEMPO
 - Analytical expressions for correlation functions with Ohmic spectral densities.
 
+To avoid svd instabilities, I had to use OQuPy version that used INTEGRATE_EPSREL
+and increase 'INTEGRATE_EPSREL' defined in oqupy/config.py to 2**(-34) 
+
 """
 
 import sys
-sys.path.insert(0,'..')
+sys.path.insert(0,'/Users/easthamp/OQuPy')
 
 import oqupy
 import oqupy.operators as op
@@ -26,36 +29,9 @@ from scipy.optimize import minimize,Bounds
 from wolframclient.evaluation import WolframLanguageSession
 from wolframclient.language import wl, wlexpr
 session = WolframLanguageSession('/Applications/Wolfram.app/Contents/MacOS/WolframKernel')
+# %%
 
-session.evaluate("""
-elsol[inispl_?NumericQ,betaomegac_?NumericQ]:=Module[{eqns},
-eqns=1/(2 \[Omega]c r[t]^2) E^(r[t]/\[Omega]c) Sech[1/2 \[Beta] r[t]]^4 (\[Omega]c Sinh[\[Beta] r[t]] Derivative[1][r][t]^2+r[t] ((-2 \[Beta] \[Omega]c+\[Beta] \[Omega]c Cosh[\[Beta] r[t]]-Sinh[\[Beta] r[t]]) Derivative[1][r][t]^2-2 \[Omega]c Sinh[\[Beta] r[t]] Derivative[2][r][t])) /. {\[Beta]->1,\[Omega]c->betaomegac}; (* Solve the equations in dimensionless form *);
-res[inisl_?NumericQ]:=r /. NDSolve[{eqns==0,r[0]==inispl,r'[0]==inisl},r,{t,0,1}][[1]];
-solvedforisl=a /. FindRoot[res[a][1]==0,{a,0}];
-res[solvedforisl]];
-optimaltdlensol[temp_, inisplit_, tf_, omegac_, times_] := Module[
-  {
-    t = N[temp],
-    ini = N[inisplit],
-    duration = N[tf],
-    oc = N[omegac],
-    ts,
-    dimensionlessresult
-  },
-
-  (* Force times into a numeric list *)
-  ts = N @ Flatten @ {times};
-
-  (* Solve in dimensionless units *)
-  dimensionlessresult = elsol[ini/t, oc/t];
-
-  (* Evaluate numerically at each time *)
-  Developer`ToPackedArray[
-    t * (N[dimensionlessresult[#/duration]]) & /@ ts
-  ]
-]
-""")
-
+session.evaluate("""Get["thermodynamics.wls"]""")
 
 pt_parameters = {'epsrel':10**(-7),
                  'alpha':0.1,
@@ -71,7 +47,7 @@ dt=pt_parameters['dt']
 # we will consider dynamics up to tf
 # tfswitch is the end time of the smooth switching protocol
 # %%
-tf=100
+tf=400
 tfswitch=20
 # spectral density
 def j(w):
@@ -130,10 +106,22 @@ dynamicscf = oqupy.state_gradient(system,rhoini,[],[ttiheatpt],tdsplit,start_tim
 
 t,s_x=dynamics.expectations(op.sigma('x'),real=True)
 heats=dynamicscf.states.trace(axis1=1,axis2=2).imag/u
-
+# %%
+dt=0.2
+tf=1
+times=np.arange(5)*dt
+woft,sxloft,lbladqoft=session.evaluate(wl.Global.optimalsolanddynamics(temperature,
+                                                                       inisplit,
+                                                                       tf,
+                                                                       omega_cutoff,
+                                                                       dt,
+                                                                       alpha,
+                                                                       times))
+# %%
 fig,axs=plt.subplots(3)
 
 axs[0].plot(t,heats)
+#axs[0].plot(t,lbladqoft)
 axs[0].set_xlabel(r'$t$')
 axs[0].set_ylabel(r'$\langle Q \rangle$')
 axs[1].plot(t,s_x)
@@ -190,19 +178,52 @@ dynamicsswcf = oqupy.state_gradient(system,rhoini,[],[heatptswitch],tdsplit,star
 tsw,sxsw=dynamicssw.expectations(op.sigma('x'),real=True)
 heatssw=dynamicsswcf.states.trace(axis1=1,axis2=2).imag/u
 
-fig,axs=plt.subplots(3)
+def vneumannentropy(rho):
+    probs=np.linalg.eigvalsh(rho)
+    return -np.sum(probs*(np.log(probs)))
 
-axs[0].plot(t,heatssw)
+# %%
+# landauer limit
+ll=temperature*(vneumannentropy(dynamicssw.states[-1])-vneumannentropy(rhoini))
+print('Landauer limit ',ll)
+print('Achieved Q ',-heatssw[-1])
+print('Percentage of Landauer achieved ',-100*heatssw[-1]/ll)
+print('Percentage of Landauer achieved (Lindblad)',-100*lbladqoft[-1]/ll)
+
+# %%
+fig,axs=plt.subplots(1)
+axs=[axs]
+
+axs[0].plot(t,heatssw,label='Switched coupling')
+axs[0].plot(t,heats,label='Constant coupling')
+axs[0].plot(t,lbladqoft,label='Lindblad')
 axs[0].set_xlabel(r'$t$')
 axs[0].set_ylabel(r'$\langle Q \rangle$')
+axs[0].axhline(-ll,ls='--',label='L. limit')
+axs[0].legend()
+plt.show()
+
+fig,axs=plt.subplots(3)
+
+axs[0].plot(t,heatssw,label='Switched coupling')
+axs[0].plot(t,heats,label='Constant coupling')
+axs[0].plot(t,lbladqoft,label='Lindblad')
+axs[0].set_xlabel(r'$t$')
+axs[0].set_ylabel(r'$\langle Q \rangle$')
+axs[0].axhline(-ll,ls='--',label='L. limit')
+
 axs[1].plot(t,sxsw)
+axs[1].plot(t,s_x)
 axs[1].set_xlabel(r'$t$')
 axs[1].set_ylabel(r'$\langle \sigma_x \rangle$')
 axs[1].set_ylim(-1.0,0.0)
 axs[2].plot(halfsteptimes,tdsplit)
 axs[2].set_xlabel(r'$t$')
 axs[2].set_ylabel(r'$\omega_q(t)$')
-plt.legend()
+
 plt.show()
+
+# %%
+# %%
 
 # %%
