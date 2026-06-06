@@ -1056,7 +1056,7 @@ def influence_matrix(
                 north_deg_positions, west_deg_positions = deg_positions
                 infl=(infl[north_deg_positions].T)[west_deg_positions].T
 
-    if extra_dim:
+    if extra_dim and infl is not None:
         nsup=1
         infl=np.pad(infl,((0,nsup),(0,nsup)),constant_values=0.)
         if dk == 0:
