@@ -31,7 +31,7 @@ from wolframclient.language import wl, wlexpr
 session = WolframLanguageSession('/Applications/Wolfram.app/Contents/MacOS/WolframKernel')
 # %%
 
-session.evaluate("""Get["thermodynamics.wls"]""")
+lbladqoft=session.evaluate("""Get["thermodynamics.wls"]""")
 
 pt_parameters = {'epsrel':10**(-7),
                  'alpha':0.1,
@@ -107,21 +107,10 @@ dynamicscf = oqupy.state_gradient(system,rhoini,[],[ttiheatpt],tdsplit,start_tim
 t,s_x=dynamics.expectations(op.sigma('x'),real=True)
 heats=dynamicscf.states.trace(axis1=1,axis2=2).imag/u
 # %%
-dt=0.2
-tf=1
-times=np.arange(5)*dt
-woft,sxloft,lbladqoft=session.evaluate(wl.Global.optimalsolanddynamics(temperature,
-                                                                       inisplit,
-                                                                       tf,
-                                                                       omega_cutoff,
-                                                                       dt,
-                                                                       alpha,
-                                                                       times))
-# %%
 fig,axs=plt.subplots(3)
 
 axs[0].plot(t,heats)
-#axs[0].plot(t,lbladqoft)
+axs[0].plot(t,lbladqoft)
 axs[0].set_xlabel(r'$t$')
 axs[0].set_ylabel(r'$\langle Q \rangle$')
 axs[1].plot(t,s_x)

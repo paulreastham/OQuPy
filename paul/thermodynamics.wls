@@ -33,11 +33,25 @@ lrop[op,opd]-(lop[opdop]+rop[opdop])/2];
 
 (* ::Input::Initialization:: *)
 (* Determine the optimal Lindblad solution via thermodynamic length, and the dynamics of sx and heat in that solution *)
-optimalsolanddynamics[temp_,inisplit_,tf_,omegac_,dt_,alpha_,times_]:=Module[{},splits=optimaltdlensol[temp,inisplit,tf,omegac,times];
+optsol[temp_,inisplit_,tf_,omegac_,dt_,alpha_,times_]:=Module[{},splits=optimaltdlensol[temp,inisplit,tf,omegac,times];
 j[w_]:=2*alpha*w*Exp[-w/omegac];nb[w_]:=If[temp>0, 1/(Exp[w/temp]-1),0];dnrate[w_]:=(Pi/2)*j[w]*(1+nb[w]);uprate[w_]:=(Pi/2)*j[w]*nb[w];
 diss[w_]:=uprate[w]*dissipator[sp]+dnrate[w]*dissipator[sm];
 lvprop[step_]:=Module[{},hamstep=ham[splits[[step]]];hamprop=-I*(lop[hamstep]-rop[hamstep]);hamprop=MatrixExp[dt*hamprop];dissprop=MatrixExp[dt*diss[splits[[step]]]];dissprop . hamprop];
 states={};
 rhoini=thermstate[inisplit,temp];
-state=Flatten[rhoini];props=Table[lvprop[step],{step,1,Length[times]}];For[step=1,step<Length[props],step++;AppendTo[states,state];state=props[[step]] . state];AppendTo[states,state];rhooft=ArrayReshape[states,{Length[states],2,2}];sx=(Tr[{{1,0},{0,-1}} . #])& /@ rhooft;hrateop[w_]:=w*{{dnrate[w],0},{0,-uprate[w]}};hrateops=hrateop /@ splits;hcurrent=MapThread[Tr[#1 . #2]&,{hrateops,rhooft}];hperstep=hcurrent*dt;qoft=Re[Accumulate[hperstep]]; {N[splits],N[sx],N[qoft]}];
+state=Flatten[rhoini];props=Table[lvprop[step],{step,1,Length[times]}];For[step=1,step<Length[props],step++;AppendTo[states,state];state=props[[step]] . state];AppendTo[states,state];rhooft=ArrayReshape[states,{Length[states],2,2}];sx=(Tr[{{1,0},{0,-1}} . #])& /@ rhooft;hrateop[w_]:=w*{{dnrate[w],0},{0,-uprate[w]}};hrateops=hrateop /@ splits;hcurrent=MapThread[Tr[#1 . #2]&,{hrateops,rhooft}];hperstep=hcurrent*dt;qoft=Re[Accumulate[hperstep]]; N[qoft]];
+
+temp=0.1
+inisplit=1.0
+tf=400
+omegac=1.0
+dt=0.2
+alpha=0.05
+times=Table[t,{t,0,tf,dt}]
+optsol[temp,inisplit,tf,omegac,dt,alpha,times]
+
+
+
+
+
 
